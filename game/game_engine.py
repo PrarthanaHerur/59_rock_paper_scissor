@@ -28,6 +28,10 @@ class GameEngine:
         self.player_score = 0
         self.cpu_score = 0
 
+        self.winning_score = 3
+        self.match_over = False
+        self.match_winner = None
+
         self.round_resolved_time = 0
         self.display_duration = 1800
         self.showing_result = False
@@ -51,6 +55,9 @@ class GameEngine:
         return rules.get((player, cpu), "TIE")
 
     def play_round(self, choice):
+        if self.match_over or self.showing_result:
+            return
+
         self.player_choice = choice
         self.cpu_choice = random.choice(self.choices)
 
@@ -59,10 +66,20 @@ class GameEngine:
             self.player_score += 1
             self.result_text = f"You Win! {self.player_choice} beats {self.cpu_choice}."
             self.result_color = (80, 230, 120)
+
+            if self.player_score >= self.winning_score:
+                self.match_over = True
+                self.match_winner = "PLAYER"
+
         elif outcome == "CPU":
             self.cpu_score += 1
             self.result_text = f"You Lose! {self.cpu_choice} beats {self.player_choice}."
             self.result_color = (240, 80, 80)
+
+            if self.cpu_score >= self.winning_score:
+                self.match_over = True
+                self.match_winner = "CPU"
+
         else:
             self.result_text = f"It's a Draw! Both picked {self.player_choice}."
             self.result_color = (240, 210, 80)
@@ -70,7 +87,23 @@ class GameEngine:
         self.showing_result = True
         self.round_resolved_time = pygame.time.get_ticks()
 
+    def reset_match(self):
+        self.player_score = 0
+        self.cpu_score = 0
+        self.player_choice = None
+        self.cpu_choice = None
+        self.result_text = "Make your move!"
+        self.result_color = (220, 225, 235)
+        self.match_over = False
+        self.match_winner = None
+        self.showing_result = False
+
     def handle_event(self, event):
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            if self.match_over:
+                self.reset_match()
+            return
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for btn in self.buttons:
                 if btn.contains(event.pos):
@@ -80,11 +113,19 @@ class GameEngine:
     def update(self):
         now = pygame.time.get_ticks()
         if self.showing_result and (now - self.round_resolved_time >= self.display_duration):
-            self.player_choice = None
-            self.cpu_choice = None
-            self.result_text = "Make your move!"
-            self.result_color = (190, 195, 205)
-            self.showing_result = False
+            if self.match_over:
+                if self.match_winner == "PLAYER":
+                    self.result_text = "PLAYER WINS THE MATCH! Press R to restart."
+                    self.result_color = (80, 230, 120)
+                else:
+                    self.result_text = "CPU WINS THE MATCH! Press R to restart."
+                    self.result_color = (240, 80, 80)
+            else:
+                self.player_choice = None
+                self.cpu_choice = None
+                self.result_text = "Make your move!"
+                self.result_color = (190, 195, 205)
+                self.showing_result = False
 
     def render(self, screen):
         screen.fill((24, 28, 36))
