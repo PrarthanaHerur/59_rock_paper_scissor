@@ -32,6 +32,9 @@ class GameEngine:
         self.match_over = False
         self.match_winner = None
 
+        self.recent_player_choices = []
+        self.history_limit = 5
+
         self.round_resolved_time = 0
         self.display_duration = 1800
         self.showing_result = False
@@ -54,12 +57,42 @@ class GameEngine:
         }
         return rules.get((player, cpu), "TIE")
 
+    def get_adaptive_cpu_choice(self):
+        if len(self.recent_player_choices) < 3:
+            return random.choice(self.choices)
+
+        counts = {
+            "ROCK": self.recent_player_choices.count("ROCK"),
+            "PAPER": self.recent_player_choices.count("PAPER"),
+            "SCISSORS": self.recent_player_choices.count("SCISSORS"),
+        }
+
+        most_common_choice = max(counts, key=counts.get)
+
+        counter_moves = {
+            "ROCK": "PAPER",
+            "PAPER": "SCISSORS",
+            "SCISSORS": "ROCK",
+        }
+
+        counter_move = counter_moves[most_common_choice]
+
+        if random.random() < 0.70:
+            return counter_move
+
+        return random.choice(self.choices)
+
     def play_round(self, choice):
         if self.match_over or self.showing_result:
             return
 
         self.player_choice = choice
-        self.cpu_choice = random.choice(self.choices)
+        self.recent_player_choices.append(choice)
+
+        if len(self.recent_player_choices) > self.history_limit:
+            self.recent_player_choices.pop(0)
+
+        self.cpu_choice = self.get_adaptive_cpu_choice()
 
         outcome = self.determine_winner(self.player_choice, self.cpu_choice)
         if outcome == "PLAYER":
@@ -96,6 +129,7 @@ class GameEngine:
         self.result_color = (220, 225, 235)
         self.match_over = False
         self.match_winner = None
+        self.recent_player_choices = []
         self.showing_result = False
 
     def handle_event(self, event):
